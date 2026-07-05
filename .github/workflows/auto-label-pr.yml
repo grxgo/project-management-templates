@@ -1,4 +1,4 @@
-name: Auto Label Pull Requests
+name: Auto Label Issues and Pull Requests
 
 on:
   workflow_call:
@@ -10,17 +10,25 @@ jobs:
   label:
     runs-on: ubuntu-latest
     permissions:
+      issues: write
       pull-requests: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: PR label based on title
+      - name: Label Issue or PR based on title
         uses: actions/github-script@v9
         with:
           script: |
-            const title = context.payload.pull_request.title;
+            const isPR = context.payload.pull_request !== undefined;
+            const isIssue = context.payload.issue !== undefined
+            
+            if (!isPR && !isIssue) {
+              console.log('Isn't PR or Issue...');
+              return;
+            }
+            
+            const title = isPR ? context.payload.pull_request.title : context.payload.issue.title;
+            const number = isPR ? context.payload.pull_request.number : context.payload.issue.number;
+            
             let labels = [];
             
             if (title.includes('[Bug]')) labels.push('bug');
@@ -36,4 +44,7 @@ jobs:
                 issue_number: context.payload.pull_request.number,
                 labels: labels
               });
+              console.log(`✅ Added Labels: ${labels.join(', ')}`);
+            } else {
+              console.log(`ℹ️ No Labels for title: "${title}"`);
             }

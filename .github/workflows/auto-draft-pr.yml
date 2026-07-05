@@ -1,4 +1,4 @@
-name: Auto Create Draft Pull Request from Issue Branch
+name: Auto Create Draft Pull Request on First Push
 
 on:
   workflow_call:
@@ -15,7 +15,6 @@ on:
 jobs:
   create-draft-pr:
     runs-on: ubuntu-latest
-    if: github.event.ref_type == 'branch'
     permissions:
       pull-requests: write
       contents: read
@@ -27,7 +26,7 @@ jobs:
       - name: Check if branch matches pattern
         id: check
         run: |
-          BRANCH="${{ github.event.ref }}"
+          BRANCH="${{ github.ref_name }}"
           if [[ "$BRANCH" =~ ^[0-9]+- ]]; then
             echo "match=true" >> $GITHUB_OUTPUT
             ISSUE_NUMBER=$(echo "$BRANCH" | cut -d'-' -f1)
@@ -55,13 +54,30 @@ jobs:
         id: pr_check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: ${{ github.event.ref }}
+          BRANCH_NAME: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
           PR_EXISTS=$(gh pr list --head "${BRANCH_NAME}" --json number -q '.[0].number' 2>/dev/null || echo "")
           echo "pr_exists=$PR_EXISTS" >> $GITHUB_OUTPUT
           if [ -n "$PR_EXISTS" ]; then
-            echo "ℹ️ PR #${PR_EXISTS} existiert bereits für diesen Branch"
+            echo "ℹ️ PR #${PR_EXISTS} already exists for this branch"
+          fi
+
+      - name: Check if branch has commits
+        id: check_commits
+        if: steps.check.outputs.match == 'true'
+        run: |
+          git fetch origin main
+          
+          # Prüfen ob es Commits gibt, die nicht in main sind
+          COMMIT_COUNT=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
+          
+          if [ "$COMMIT_COUNT" -eq 0 ]; then
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Branch and main have the same commits"
+          else
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+            echo "✅ Branch has $COMMIT_COUNT Commits"
           fi
 
       - name: Create Draft Pull Request
@@ -70,7 +86,7 @@ jobs:
           steps.pr_check.outputs.pr_exists == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: ${{ github.event.ref }}
+          BRANCH_NAME: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ steps.check.outputs.issue_number }}
           ISSUE_TITLE: ${{ steps.issue.outputs.issue_title }}
@@ -86,10 +102,10 @@ jobs:
           gh pr create \
             --repo="${REPO}" \
             --head="${BRANCH_NAME}" \
-            --base="main" \
+            --base="${{ inputs.base-branch }}" \
             --title="${ISSUE_TITLE}" \
             --body-file="/tmp/pr_body.md" \
             --draft 
           
-          echo "✅ Draft-PR für Issue #${ISSUE_NUMBER} erstellt!"
-          echo "📝 PR-Titel: ${ISSUE_TITLE}"
+          echo "✅ Draft-PR for Issue #${ISSUE_NUMBER} created!"
+          echo "📝 PR-title: ${ISSUE_TITLE}"
