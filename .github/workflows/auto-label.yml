@@ -39,4 +39,4 @@ jobs:
                 labels: [label]
               });
             
-            console.log(`✅ Label "${repoLabel}" added for repository "${repo}"`);
+            console.log(`✅ Label "${label}" added for repository "${repo}"`);
