@@ -1,0 +1,85 @@
+name: Auto Create Draft Pull Request from Issue Branch
+
+on:
+  create:
+    branches:
+      - '**'
+
+jobs:
+  create-draft-pr:
+    runs-on: ubuntu-latest
+    if: github.event.ref_type == 'branch'
+    permissions:
+      pull-requests: write
+      contents: read
+      issues: read
+    steps:
+      - name: Check if branch matches pattern
+        id: check
+        run: |
+          BRANCH="${{ github.event.ref }}"
+          if [[ "$BRANCH" =~ ^[0-9]+- ]]; then
+            echo "match=true" >> $GITHUB_OUTPUT
+            ISSUE_NUMBER=$(echo "$BRANCH" | cut -d'-' -f1)
+            echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "✅ Branch $BRANCH matched pattern (Issue #$ISSUE_NUMBER)"
+          else
+            echo "match=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Branch $BRANCH did not match pattern"
+          fi
+
+      - name: Get Issue Details
+        if: steps.check.outputs.match == 'true'
+        id: issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.check.outputs.issue_number }}
+          REPO: ${{ github.repository }}
+        run: |
+          ISSUE_TITLE=$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json title -q '.title' 2>/dev/null || echo "Issue #$ISSUE_NUMBER")
+          echo "issue_title=$ISSUE_TITLE" >> $GITHUB_OUTPUT
+          echo "📝 Issue #$ISSUE_NUMBER: $ISSUE_TITLE"
+
+      - name: Check if PR already exists
+        if: steps.check.outputs.match == 'true'
+        id: pr_check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ github.event.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          PR_EXISTS=$(gh pr list --head "${BRANCH_NAME}" --json number -q '.[0].number' 2>/dev/null || echo "")
+          echo "pr_exists=$PR_EXISTS" >> $GITHUB_OUTPUT
+          if [ -n "$PR_EXISTS" ]; then
+            echo "ℹ️ PR #${PR_EXISTS} existiert bereits für diesen Branch"
+          fi
+
+      - name: Create Draft Pull Request
+        if: |
+          steps.check.outputs.match == 'true' &&
+          steps.pr_check.outputs.pr_exists == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ github.event.ref }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.check.outputs.issue_number }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.issue_title }}
+        run: |
+          BRANCH_DESC=$(echo "$BRANCH_NAME" | sed 's/^[0-9]*-//' | tr '-' ' ')
+          
+          gh pr create \
+            --repo="${REPO}" \
+            --head="${BRANCH_NAME}" \
+            --base="main" \
+            --title="${ISSUE_TITLE}" \
+            --body="\          
+          **Issue:** #${ISSUE_NUMBER}
+          **Branch:** ${BRANCH_NAME}
+          
+          ---
+          
+          Closes #${ISSUE_NUMBER}" \
+            --draft 
+          
+          echo "✅ Draft-PR für Issue #${ISSUE_NUMBER} erstellt!"
+          echo "📝 PR-Titel: ${ISSUE_TITLE}"
