@@ -1,8 +1,10 @@
 name: Auto Label Pull Requests
 
 on:
-  pull_request:
-    types: [opened, edited, reopened]
+  workflow_call:
+    secrets:
+      GH_TOKEN:
+        required: true
 
 jobs:
   label:
