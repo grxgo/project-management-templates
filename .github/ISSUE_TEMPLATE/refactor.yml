@@ -1,14 +1,9 @@
 name: Refactor
 description: ♻️ Code cleanup with no user-visible change
 title: "[Refactor] "
-labels: ["refactor"]
+labels: ["enhancement"]
+type: task
 body:
-  - type: markdown
-    attributes:
-      value: |
-        ### 🧹 What
-        <!-- What code needs to be cleaned up, simplified, or restructured? -->
-
   - type: textarea
     id: what
     attributes:
@@ -22,19 +17,19 @@ body:
     id: why
     attributes:
       label: 💡 Why
-      description: Why is this refactoring needed? (e.g., reduce duplication, improve readability, prepare for new feature)
+      description: Why is this refactoring needed?
       placeholder: "e.g., Reduce duplication, improve readability, prepare for new feature"
     validations:
       required: true
 
-  - type: checkboxes
+  - type: textarea
     id: done
     attributes:
       label: 🎯 Done when
-      options:
-        - label: "Task 1"
-        - label: "Task 2"
-        - label: "Task 3"
+      description: What acceptance criteria has to be met, so that this issue can be resolved?
+      placeholder: "e.g., Code is structured and useless comments are deleted"
+    validations:
+      required: true
 
   - type: textarea
     id: notes
