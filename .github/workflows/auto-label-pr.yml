@@ -2,33 +2,36 @@ name: Auto Label Pull Requests
 
 on:
   pull_request:
-    types: opened
+    types: [opened, edited, reopened]
 
 jobs:
   label:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
-      - name: Apply labels to issues and PRs
-        uses: actions-ecosystem/action-add-labels@v1
+      - name: PR label based on title
+        uses: actions/github-script@v9
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: |            
-            - name: bug
-              if: |
-                github.event.pull_request.title.contains('[Bug]')
-            - name: feature
-              if: |
-                github.event.pull_request.title.contains('[Feature]')
-            - name: enhancement
-              if: |
-                github.event.pull_request.title.contains('[Enhancement]')
-            - name: refactor
-              if: |
-                github.event.pull_request.title.contains('[Refactor]')
-            - name: documentation
-              if: |
-                github.event.pull_request.title.contains('[Documentation]')
+          script: |
+            const title = context.payload.pull_request.title;
+            let labels = [];
+            
+            if (title.includes('[Bug]')) labels.push('bug');
+            if (title.includes('[Feature]')) labels.push('feature');
+            if (title.includes('[Enhancement]')) labels.push('enhancement');
+            if (title.includes('[Refactor]')) labels.push('refactor');
+            if (title.includes('[Documentation]')) labels.push('documentation');
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: labels
+              });
+            }
