@@ -1,7 +1,7 @@
 name: Enhancement
 description: 📈Improvement/Extention of existing functionality (user-visible)
 title: "[Enhancement] "
-labels: ["enhancement"]
+labels: [ "enhancement" ]
 type: task
 body:
   - type: textarea
