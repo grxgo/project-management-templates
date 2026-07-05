@@ -1,7 +1,7 @@
 name: Refactor
 description: ♻️ Code cleanup with no user-visible change
 title: "[Refactor] "
-labels: ["enhancement"]
+labels: [ "enhancement" ]
 type: task
 body:
   - type: textarea
