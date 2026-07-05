@@ -1,0 +1,42 @@
+name: Auto Label Issues and Pull Requests
+
+on:
+  workflow_call:
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Add backend label
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const issueNumber = context.payload.issue?.number || context.payload.pull_request?.number;
+            if (!issueNumber) return;        
+            
+            const repo = context.repo.repo;
+            
+            let label = '';
+            if (repo === 'happahabba') {
+              label = 'backend';
+            } else if (repo === 'LeggerLegger') {
+              label = 'frontend';
+            } else {
+              console.log(`ℹ️ No specific label for Repository: ${repo}`);
+              return;
+            }
+            
+            await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: [label]
+              });
+            
+            console.log(`✅ Label "${repoLabel}" added for repository "${repo}"`);
