@@ -1,9 +1,16 @@
 name: Auto Create Draft Pull Request from Issue Branch
 
 on:
-  create:
-    branches:
-      - '**'
+  workflow_call:
+    inputs:
+      base-branch:
+        description: 'Target branch for the PR'
+        required: false
+        default: 'main'
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
 
 jobs:
   create-draft-pr:
