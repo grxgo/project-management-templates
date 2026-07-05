@@ -1,0 +1,37 @@
+name: Enhancement
+description: 📈Improvement/Extention of existing functionality (user-visible)
+title: "[Enhancement] "
+labels: ["enhancement"]
+type: task
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 📈 What
+      description: What needs to be improved/extended?
+      placeholder: "e.g., When submitting the form, no redirect is being made"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 💡 Why (optional)
+      description: Why is this change useful?
+      placeholder: "e.g., Improvement of Usability"
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 🎯 Done when
+      description: What acceptance criteria has to be met, so that this issue can be resolved?
+      placeholder: "e.g., After submitting the form, the user is staying on the same page and a success message appears"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 📝 Notes (optional)
+      description: Any thoughts, links, references, or implementation ideas
+      placeholder: "e.g., Link to related PR, design doc, etc."
