@@ -1,0 +1,36 @@
+name: New Feature
+description: ✨Adding brand-new functionality
+title: "[Feat] "
+labels: [ "feature" ]
+type: feature
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 🏗️ What
+      description: What needs to be built?
+      placeholder: "e.g., For login it has to be possible that both username and email address can be used to authenticate"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 💡 Why (optional)
+      description: Why is this feature useful?
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 🎯 Done when
+      description: What acceptance criteria has to be met, so that this issue can be resolved?
+      placeholder: "e.g., Tests are extended and existing remain green"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 📝 Notes (optional)
+      description: Any thoughts, links, references, or implementation ideas
+      placeholder: "e.g., Link to related PR, design doc, etc."

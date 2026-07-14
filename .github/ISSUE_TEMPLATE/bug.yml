@@ -1,0 +1,42 @@
+name: Bug Report
+description: 🐛Fix a problem
+title: "[Bug] "
+labels: [ "bug" ]
+type: bug
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 🔧 What
+      description: What is broken or does not work as expected
+      placeholder: "e.g., The login form does not accept email addresses, only usernames. It should accept both."
+      validations:
+        required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 🐛 Steps to reproduce / screenshots
+      description: What is broken or does not work as expected? How can we see the problem ourselves? Provide steps, screenshots, or a video.
+      placeholder: |
+        1. Go to login page
+        2. Enter E-Mail address
+        3. Click on login
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 🎯 Expected behavior
+      description: What should have happened instead?
+      placeholder: "e.g., The user should be logged in successfully when using their email address."
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 📝 Notes (optional)
+      description: Any thoughts, links, references, or ideas for fixing the issue
+      placeholder: "e.g., This might be related to the authentication service. See PR #xxx for context."
