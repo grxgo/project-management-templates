@@ -1,5 +1,8 @@
-# This repo follows its own rule: identical caller as in the other grxgo
-# repos (see conventional-commits.yml).
+# This repo follows its own rule: same check as in the other grxgo repos.
+# Local path instead of grxgo/.github/...@main on purpose — it runs the
+# version from the PR branch, so changes to the reusable workflow are tested
+# by the very PR that makes them (and the first-ever PR could not fail on a
+# not-yet-existing @main reference again).
 name: Conventional Commits
 
 on:
@@ -8,4 +11,4 @@ on:
 
 jobs:
   commitlint:
-    uses: grxgo/.github/.github/workflows/conventional-commits.yml@main
+    uses: ./.github/workflows/conventional-commits.yml
