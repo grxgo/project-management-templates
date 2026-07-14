@@ -21,6 +21,8 @@ protect_breaking_commits = true
 tag_pattern = "v[0-9].*"
 # The HTML comments enforce group order in the rendered changelog.
 commit_parsers = [
+  # merge commits carry no information beyond the PR they merge
+  { message = "^Merge ", skip = true },
   { message = "^feat", group = "<!-- 0 -->Features" },
   { message = "^fix", group = "<!-- 1 -->Bug Fixes" },
   { message = "^perf", group = "<!-- 2 -->Performance" },
