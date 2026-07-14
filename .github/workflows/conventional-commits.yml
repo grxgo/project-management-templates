@@ -1,0 +1,32 @@
+# Reusable workflow: enforces conventional commits on all PR commits
+# (grxgo/.github#9). Repos consume it via a thin caller:
+#
+#   name: Conventional Commits
+#   on:
+#     pull_request:
+#       types: [opened, edited, synchronize, reopened]
+#   jobs:
+#     commitlint:
+#       uses: grxgo/.github/.github/workflows/conventional-commits.yml@main
+#
+# Without a commitlint config in the caller repo, the rules of
+# @commitlint/config-conventional apply automatically (fix:/feat:/docs:/… +
+# BREAKING CHANGE) — exactly the base that semver bumps and changelogs will
+# be derived from.
+name: Conventional Commits
+
+on:
+  workflow_call: {}
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # commitlint needs the PR commits, not just the merge HEAD
+          fetch-depth: 0
+
+      - uses: wagoid/commitlint-github-action@v6
+        with:
+          helpURL: https://www.conventionalcommits.org/en/v1.0.0/
