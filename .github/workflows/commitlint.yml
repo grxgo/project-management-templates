@@ -1,0 +1,11 @@
+# This repo follows its own rule: identical caller as in the other grxgo
+# repos (see conventional-commits.yml).
+name: Conventional Commits
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  commitlint:
+    uses: grxgo/.github/.github/workflows/conventional-commits.yml@main
