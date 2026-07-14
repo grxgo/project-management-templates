@@ -1,0 +1,147 @@
+# Reusable release workflow for all grxgo repos (grxgo/.github#9, flow
+# diagram in docs/release-process.md): conventional commits since the last
+# tag determine the next semver version; the image (optional) and the chart
+# are pushed to GHCR under that version; only after both pushes succeed the
+# commit is tagged and a GitHub release with a grouped changelog and the
+# chart archive is created. Failed runs never leave a tag or release behind.
+#
+# Caller (run from main only, after the repo's test jobs):
+#
+#   release:
+#     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#     needs: [ build, helm-lint ]
+#     permissions:
+#       contents: write
+#       packages: write
+#     uses: grxgo/.github/.github/workflows/release-chart.yml@main
+#     with:
+#       chart-path: charts/my-service
+#       image-name: my-service
+name: Release Chart
+
+on:
+  workflow_call:
+    inputs:
+      chart-path:
+        description: Path to the Helm chart directory
+        required: true
+        type: string
+      image-name:
+        description: GHCR image name; empty skips the image build
+        required: false
+        type: string
+        default: ''
+      app-version-from-release:
+        description: >-
+          Stamp the chart appVersion with the release version. Disable for
+          charts that ship third-party software (their appVersion is the
+          upstream version, e.g. Keycloak).
+        required: false
+        type: boolean
+        default: true
+
+env:
+  GIT_CLIFF_VERSION: 2.9.1
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # One release at a time per repo: parallel merges queue up instead of
+    # racing for the next tag. Never cancelled — every merge must release.
+    concurrency:
+      group: chart-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # git-cliff derives the version from tags + full history
+          fetch-depth: 0
+
+      - name: Check out shared release config
+        uses: actions/checkout@v7
+        with:
+          repository: grxgo/.github
+          path: .release-config
+
+      - name: Install git-cliff
+        run: |
+          curl -fsSL "https://github.com/orhun/git-cliff/releases/download/v${GIT_CLIFF_VERSION}/git-cliff-${GIT_CLIFF_VERSION}-x86_64-unknown-linux-gnu.tar.gz" -o /tmp/git-cliff.tgz
+          tar -xzf /tmp/git-cliff.tgz -C /tmp
+          sudo mv "/tmp/git-cliff-${GIT_CLIFF_VERSION}/git-cliff" /usr/local/bin/
+
+      # fix -> patch, feat -> minor, breaking -> major; any other commit type
+      # still bumps the patch level, so main never diverges from the latest
+      # release. No commits since the last tag (e.g. a re-run) -> skip.
+      - name: Compute next version
+        id: version
+        run: |
+          TAG=$(git cliff --config .release-config/cliff.toml --bumped-version)
+          if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            echo "::notice::No changes since $TAG - skipping release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          echo "CHART_NAME=$(basename '${{ inputs.chart-path }}')" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        if: steps.version.outputs.skip == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # arm64 for the Apple-Silicon k3d nodes; the Dockerfiles pin their build
+      # stage to $BUILDPLATFORM, so only the runtime stage is per-platform.
+      - name: Set up QEMU
+        if: steps.version.outputs.skip == 'false' && inputs.image-name != ''
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.version.outputs.skip == 'false' && inputs.image-name != ''
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        if: steps.version.outputs.skip == 'false' && inputs.image-name != ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:${{ env.VERSION }}
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Package and push chart
+        if: steps.version.outputs.skip == 'false'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm lint "${{ inputs.chart-path }}"
+          if [ "${{ inputs.app-version-from-release }}" = "true" ]; then
+            helm package "${{ inputs.chart-path }}" --version "$VERSION" --app-version "$VERSION"
+          else
+            helm package "${{ inputs.chart-path }}" --version "$VERSION"
+          fi
+          helm push "$CHART_NAME-$VERSION.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
+
+      - name: Generate release notes
+        if: steps.version.outputs.skip == 'false'
+        run: git cliff --config .release-config/cliff.toml --unreleased --tag "$TAG" --strip header -o /tmp/release-notes.md
+
+      # Tag only now: image and chart are published, so a tag never points to
+      # a version that does not exist on GHCR.
+      - name: Tag and create GitHub release
+        if: steps.version.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" "$CHART_NAME-$VERSION.tgz" --title "$TAG" --notes-file /tmp/release-notes.md
