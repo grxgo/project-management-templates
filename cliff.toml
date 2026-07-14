@@ -1,0 +1,39 @@
+# Shared git-cliff configuration for all grxgo release pipelines,
+# consumed by .github/workflows/release-chart.yml (see docs/release-process.md).
+
+[changelog]
+header = ""
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | upper_first }} ({{ commit.id | truncate(length=7, end="") }})
+{%- endfor %}
+{% endfor %}
+"""
+trim = true
+
+[git]
+conventional_commits = true
+# History predates the enforced convention; keep old commits in changelogs.
+filter_unconventional = false
+protect_breaking_commits = true
+tag_pattern = "v[0-9].*"
+# The HTML comments enforce group order in the rendered changelog.
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Bug Fixes" },
+  { message = "^perf", group = "<!-- 2 -->Performance" },
+  { message = "^refactor", group = "<!-- 3 -->Refactoring" },
+  { message = "^docs", group = "<!-- 4 -->Documentation" },
+  { message = "^test", group = "<!-- 5 -->Tests" },
+  { message = "^ci|^build", group = "<!-- 6 -->CI/Build" },
+  { message = "^chore", group = "<!-- 7 -->Chores" },
+  { message = ".*", group = "<!-- 8 -->Other" },
+]
+
+[bump]
+features_always_bump_minor = true
+breaking_always_bump_major = true
+# Safety net for repos without a baseline tag yet.
+initial_tag = "v0.2.0"
