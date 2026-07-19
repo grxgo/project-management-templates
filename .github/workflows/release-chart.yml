@@ -21,6 +21,14 @@ name: Release Chart
 
 on:
   workflow_call:
+    secrets:
+      PACKAGES_READ_TOKEN:
+        description: >-
+          Org token with read:packages for Dockerfiles whose build stage
+          resolves Maven artifacts from GitHub Packages (platform-parent).
+          Maven packages are repository-scoped, so the caller's GITHUB_TOKEN
+          cannot read them.
+        required: false
     inputs:
       chart-path:
         description: Path to the Helm chart directory
@@ -116,6 +124,11 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # BuildKit secret for Dockerfiles whose build stage resolves Maven
+          # artifacts from GitHub Packages (platform-parent); never lands in
+          # a layer, unused by Dockerfiles that don't mount it
+          secrets: |
+            github_token=${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Package and push chart
         if: steps.version.outputs.skip == 'false'
