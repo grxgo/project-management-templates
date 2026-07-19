@@ -116,6 +116,11 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # BuildKit secret for Dockerfiles whose build stage resolves Maven
+          # artifacts from GitHub Packages (platform-parent); never lands in
+          # a layer, unused by Dockerfiles that don't mount it
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
 
       - name: Package and push chart
         if: steps.version.outputs.skip == 'false'
